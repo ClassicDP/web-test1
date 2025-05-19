@@ -1,13 +1,14 @@
-import Test from '../models/Test';
+
 import { Request, Response, NextFunction } from 'express';
+import {TestModel} from "../models/all";
 
 export async function getTests(req: Request, res: Response) {
-  const tests = await Test.find();
+  const tests = await TestModel.find();
   res.json(tests);
 }
 
 export async function createTest(req: Request, res: Response) {
-  const test = new Test(req.body);
+  const test = new TestModel(req.body);
   await test.save();
   res.status(201).json(test);
 }
@@ -16,7 +17,7 @@ export async function updateTest(req: Request, res: Response, next: NextFunction
   try {
     const id = req.params.id;
     const updateData = req.body;
-    const test = await Test.findByIdAndUpdate(id, updateData, { new: true });
+    const test = await TestModel.findByIdAndUpdate(id, updateData, { new: true });
     if (!test) {
       return res.status(404).json({ message: 'Test not found' });
     }

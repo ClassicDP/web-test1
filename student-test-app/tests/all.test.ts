@@ -144,7 +144,8 @@ describe('Student Test App', () => {
     });
 
     it('should register student to test and process attempt by uniqueUrl', async () => {
-        // Готовим id вручную
+        // === ЭТАП 1. Формируем вопрос/тест заранее, чтобы id опций были известны клиенту ===
+        // (Это важно для фронтенда: опции и вопросы с id будут в структуре теста, чтобы потом отправлять ответы)
         const q1o1 = new mongoose.Types.ObjectId();
         const q1o2 = new mongoose.Types.ObjectId();
         const q1o3 = new mongoose.Types.ObjectId();
@@ -152,7 +153,6 @@ describe('Student Test App', () => {
         const q2o2 = new mongoose.Types.ObjectId();
         const q2o3 = new mongoose.Types.ObjectId();
 
-        // Создаём тест
         const testData = {
             title: 'Math Test',
             description: 'Basic math test',
@@ -177,64 +177,104 @@ describe('Student Test App', () => {
                 }
             ]
         };
+        // --- Этап 1: Создаём тест (POST /tests) ---
+        // Преподаватель отправляет структуру теста, сервер возвращает тест с id вопросов/опций.
+        // Пример структуры, которую видит преподаватель (админ), и которую фронтенд может использовать для отображения/редактирования:
+        //   {
+        //     _id: string,
+        //     title: string,
+        //     description: string,
+        //     questions: [{ _id, text, options: [{ _id, text }], correctOptionId }]
+        //   }
         const resTest = await request(app)
             .post('/tests')
             .send(testData)
             .expect(201);
-        console.log('\n=== [1] Test created ===');
+        console.log('\n=== [1] Создан тест. Его структуру видит преподаватель (админ) ===');
         console.dir(resTest.body, { depth: null, colors: true });
 
         const testId = resTest.body._id;
 
-        // Создаём студента
+        // === ЭТАП 2. Создаём студента (POST /students) ===
+        // Фронтенд отправляет данные студента, получает объект студента с _id.
+        // Пример ответа:
+        //   { _id: string, name: string, email: string, registrations: [] }
         const studentRes = await request(app)
             .post('/students')
             .send({ name: 'Bob', email: 'bob@example.com', registrations: [] })
             .expect(201);
-        console.log('\n=== [2] Student created ===');
+        console.log('\n=== [2] Студент создан (id используется для регистрации на тест) ===');
         console.dir(studentRes.body, { depth: null, colors: true });
 
         const studentId = studentRes.body._id;
 
-        // Регистрируем студента на тест (получаем uniqueUrl)
+        // === ЭТАП 3. Регистрируем студента на тест (POST /students/register) ===
+        // Фронтенд отправляет { studentId, testId }, получает уникальную ссылку для прохождения теста.
+        // Пример ответа:
+        //   {
+        //     registration: { testId, uniqueUrl, status },
+        //     testUrl: '/attempt/<uniqueUrl>'
+        //   }
         const regRes = await request(app)
             .post('/students/register')
             .send({ studentId, testId })
             .expect(201);
-        console.log('\n=== [3] Student registered for test ===');
+        console.log('\n=== [3] Студент зарегистрирован на тест ===');
+        console.log('[INFO] Теперь студенту выдаётся уникальная ссылка для прохождения:');
+        console.log('GET', `/students/attempt/${regRes.body.registration.uniqueUrl}`);
         console.dir(regRes.body, { depth: null, colors: true });
 
         const { uniqueUrl } = regRes.body.registration;
         expect(typeof uniqueUrl).toBe('string');
         expect(regRes.body.testUrl.endsWith(uniqueUrl)).toBe(true);
 
-        // Получаем структуру теста по токену
+        // === ЭТАП 4. Фронтенд загружает тест для прохождения по уникальному url (GET /students/attempt/:uniqueUrl) ===
+        // Фронтенд делает GET-запрос по уникальному url.
+        // Пример структуры ответа:
+        //   {
+        //     student: { _id, name },
+        //     test: { _id, title, description, questions: [ { _id, text, options: [{ _id, text }] } ] },
+        //     registration: { status }
+        //   }
         const getAttemptRes = await request(app)
             .get(`/students/attempt/${uniqueUrl}`)
             .expect(200);
-        console.log('\n=== [4] Fetched test by uniqueUrl (student\'s test view) ===');
+        console.log('\n=== [4] Студент получает структуру теста по токену ===');
+        console.log('[INFO] Формат ответа для веб-клиента:');
         console.dir(getAttemptRes.body, { depth: null, colors: true });
 
         expect(getAttemptRes.body.test).toHaveProperty('title', 'Math Test');
         expect(getAttemptRes.body.student).toHaveProperty('name', 'Bob');
         expect(getAttemptRes.body.test.questions.length).toBe(2);
 
-        // Готовим ответы (один правильный, один неправильный)
+        // === ЭТАП 5. Формируем и отправляем ответы (POST /students/attempt/:uniqueUrl/result) ===
+        // Фронтенд отправляет payload вида:
+        //   { answers: [ { questionId, optionId }, ... ] }
+        // Пример payload для фронта:
         const answersPayload = {
             answers: [
                 { questionId: resTest.body.questions[0]._id, optionId: q1o2 }, // правильный
                 { questionId: resTest.body.questions[1]._id, optionId: q2o1 } // неправильный
             ]
         };
-        console.log('\n=== [5] Student answers ===');
+        console.log('\n=== [5] Студент отправляет свои ответы на сервер ===');
+        console.log('[INFO] Пример payload для фронта:');
         console.dir(answersPayload, { depth: null, colors: true });
 
-        // Отправляем результат попытки
+        // === ЭТАП 6. Сервер сохраняет и возвращает результат проверки ===
+        // После отправки ответов, сервер возвращает структуру результата:
+        //   {
+        //     score: number,
+        //     answers: [
+        //       { questionId, optionId, isCorrect, correctOptionId }
+        //     ]
+        //   }
         const resultRes = await request(app)
             .post(`/students/attempt/${uniqueUrl}/result`)
             .send(answersPayload)
             .expect(200);
-        console.log('\n=== [6] Result after attempt submitted ===');
+        console.log('\n=== [6] Сервер возвращает подробный результат (score, ответы с корректностью) ===');
+        console.log('[INFO] Формат для вывода пользователю:');
         console.dir(resultRes.body, { depth: null, colors: true });
 
         expect(resultRes.body.score).toBe(1);

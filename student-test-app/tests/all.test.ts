@@ -292,5 +292,74 @@ describe('Student Test App', () => {
         expect(resultRes.body.answers[0].correctOptionId).toBe(q1o2.toString());
         expect(resultRes.body.answers[1].correctOptionId).toBe(q2o2.toString());
     });
+
+
+    it('should update a test by id (PUT /tests/:id)', async () => {
+        // Генерируем id для опций
+        const o1 = new mongoose.Types.ObjectId();
+        const o2 = new mongoose.Types.ObjectId();
+        const o3 = new mongoose.Types.ObjectId();
+
+        // Step 1. Create a test
+        const testToCreate = {
+            title: 'Initial Title',
+            description: 'Initial Description',
+            questions: [
+                {
+                    text: 'Original question',
+                    options: [
+                        { _id: o1, text: 'Option 1' },
+                        { _id: o2, text: 'Option 2' },
+                        { _id: o3, text: 'Option 3' }
+                    ],
+                    correctOptionId: o2 // Ставим правильный id
+                }
+            ]
+        };
+
+        const createRes = await request(app)
+            .post('/tests')
+            .send(testToCreate)
+            .expect(201);
+
+        console.log('[PUT] Created test for update:', createRes.body);
+
+        const createdTestId = createRes.body._id;
+
+        // Step 2. Prepare update payload (тоже с id для опций)
+        const uo1 = new mongoose.Types.ObjectId();
+        const uo2 = new mongoose.Types.ObjectId();
+        const uo3 = new mongoose.Types.ObjectId();
+
+        const updatedPayload = {
+            title: 'Updated Title',
+            description: 'Updated Description',
+            questions: [
+                {
+                    text: 'Updated question',
+                    options: [
+                        { _id: uo1, text: 'Option 1 (edited)' },
+                        { _id: uo2, text: 'Option 2 (edited)' },
+                        { _id: uo3, text: 'Option 3 (edited)' }
+                    ],
+                    correctOptionId: uo2
+                }
+            ]
+        };
+
+        // Step 3. Update test via PUT or PATCH
+        const updateRes = await request(app)
+            .put(`/tests/${createdTestId}`)
+            .send(updatedPayload)
+            .expect(200);
+
+        console.log('[PUT] Updated test response:', updateRes.body);
+
+        // Step 4. Check fields
+        expect(updateRes.body).toHaveProperty('title', 'Updated Title');
+        expect(updateRes.body).toHaveProperty('description', 'Updated Description');
+        expect(updateRes.body.questions[0]).toHaveProperty('text', 'Updated question');
+        expect(updateRes.body.questions[0].options[0].text).toBe('Option 1 (edited)');
+    });
 });
 

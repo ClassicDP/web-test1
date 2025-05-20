@@ -3,7 +3,9 @@
 import request from 'supertest';
 import mongoose from 'mongoose';
 import app from '../src/index';
-import {StudentModel, TestModel} from "../src/models/all";
+import { StudentModel, TestModel } from "../src/models/all";
+import {programmingTestData} from "../src/initialTests";
+
 
 
 beforeAll(async () => {
@@ -18,6 +20,14 @@ beforeEach(async () => {
 
 afterAll(async () => {
     await mongoose.connection.close();
+});
+
+it('should insert the Programming JS/TS test into the database', async () => {
+    const res = await request(app)
+        .post('/tests')
+        .send(programmingTestData)
+        .expect(201);
+    console.log('[INIT] Programming test created:', res.body._id);
 });
 
 describe('Student Test App', () => {
@@ -283,3 +293,4 @@ describe('Student Test App', () => {
         expect(resultRes.body.answers[1].correctOptionId).toBe(q2o2.toString());
     });
 });
+

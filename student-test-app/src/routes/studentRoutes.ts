@@ -10,7 +10,7 @@ import {
 const router = express.Router();
 
 router.get('/', getStudents);
-router.get('/attempt/:uniqueUrl', getAttemptTest as RequestHandler);
+router.get('/attempt/:uniqueUrl',   getAttemptTest as RequestHandler);
 router.post('/', createStudent);
 router.put('/:id', updateStudent as RequestHandler);
 router.post('/:studentId/tests/:testId/result', submitTestResult as RequestHandler);

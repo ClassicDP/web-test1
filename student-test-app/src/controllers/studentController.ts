@@ -40,7 +40,7 @@ export async function submitTestResult(req: Request, res: Response, next: NextFu
     const { answers } = req.body; // [{ questionId, optionId }, ...]
 
     // Найти тест
-    const test = await TestModel.findOne({id: testId}).lean();
+    const test = await TestModel.findById(testId).lean();
     if (!test) return res.status(404).json({ message: 'Test not found' });
 
     // Оценить ответы
@@ -77,7 +77,7 @@ export async function submitAttemptResult(req: Request, res: Response, next: Nex
     if (!registration) return res.status(404).json({ message: 'Registration not found' });
 
     // Находим тест по testId из регистрации
-    const test = await TestModel.findOne({id: registration.testId}).lean();
+    const test = await TestModel.findById(registration.testId).lean();
     if (!test) return res.status(404).json({ message: 'Test not found' });
 
     // Оцениваем ответы
@@ -103,7 +103,13 @@ export async function registerStudentToTest(req: Request, res: Response, next: N
 
     // Проверить, есть ли уже регистрация на этот тест
     const alreadyRegistered = student.registrations.some((r: any) => r.testId.toString() === testId);
-    if (alreadyRegistered) return res.status(400).json({ message: 'Already registered' });
+    if (alreadyRegistered) {
+      const existing = student.registrations.find((r: any) => r.testId.toString() === testId);
+      return res.status(200).json({
+        registration: existing,
+        testUrl: `/attempt/${existing?.uniqueUrl}`,
+      });
+    }
 
     const uniqueUrl = uuidv4();
     const registration: IRegistration = {
@@ -134,7 +140,7 @@ export async function getAttemptTest(req: Request, res: Response, next: NextFunc
     if (!student) return res.status(404).json({ message: 'Student not found' });
     const registration = student.registrations.find(r => r.uniqueUrl === uniqueUrl);
     if (!registration) return res.status(404).json({ message: 'Registration not found' });
-    const test = await TestModel.findOne({id: registration.testId});
+    const test = await TestModel.findById(registration.testId);
     if (!test) return res.status(404).json({ message: 'Test not found' });
 
     // (Безопасно — можно не возвращать correctOptionId)

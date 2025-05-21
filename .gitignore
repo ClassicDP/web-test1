@@ -4,3 +4,4 @@
 /student-test-client/node_modules/
 /student-test-app/.env
 /student-test-client/.env
+/student-test-client/dist/

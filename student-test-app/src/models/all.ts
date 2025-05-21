@@ -13,7 +13,7 @@ export interface ITestResult {
 }
 
 export interface IRegistration {
-    testId: ObjectId;
+    testId: string;
     uniqueUrl: string;
     status: 'not_started' | 'in_progress' | 'completed';
     startedAt?: Date;
@@ -37,7 +37,7 @@ export const TestResultSchema = new Schema<ITestResult>({
     score: {type: Number},
 });
 export const RegistrationSchema = new Schema<IRegistration>({
-    testId: {type: Schema.Types.ObjectId, required: true},
+    testId: {type: String, required: true},
     uniqueUrl: {type: String, required: true},
     status: {type: String, enum: ['not_started', 'in_progress', 'completed'], default: 'not_started'},
     startedAt: {type: Date},

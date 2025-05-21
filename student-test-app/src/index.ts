@@ -1,13 +1,19 @@
 import express from 'express';
 import mongoose from 'mongoose';
+import cors from 'cors';
 import studentRoutes from "./routes/studentRoutes";
 import testRoutes from "./routes/testRoutes";
 
-
+import dotenv from 'dotenv'
+dotenv.config()
 
 const app = express();
 app.use(express.json());
 
+app.use(cors({
+    origin: '*', // или http://localhost:8080 если ты не на проде
+    credentials: true, // можно убрать, если не используешь куки
+}));
 app.use('/students', studentRoutes);
 app.use('/tests', testRoutes);
 

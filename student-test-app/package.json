@@ -1,8 +1,11 @@
 {
   "name": "student-test-app",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
+    "watch": "tsc -w",
+    "build": "tsc",
+    "start": "node ./dist/src/index.js",
     "dev": "ts-node-dev src/index.ts",
     "test": "jest",
     "dev:test": "npm run test && npm run dev"
@@ -12,11 +15,14 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "mongoose": "^8.15.0",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.18",
     "@types/express": "^5.0.2",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.15.19",

@@ -17,7 +17,7 @@ export async function updateTest(req: Request, res: Response, next: NextFunction
   try {
     const id = req.params.id;
     const updateData = req.body;
-    const test = await TestModel.findByIdAndUpdate(id, updateData, { new: true });
+    const test = await TestModel.findOneAndUpdate({id}, updateData, { new: true });
     if (!test) {
       return res.status(404).json({ message: 'Test not found' });
     }

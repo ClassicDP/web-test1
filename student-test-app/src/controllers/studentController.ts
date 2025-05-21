@@ -40,7 +40,7 @@ export async function submitTestResult(req: Request, res: Response, next: NextFu
     const { answers } = req.body; // [{ questionId, optionId }, ...]
 
     // Найти тест
-    const test = await TestModel.findById(testId).lean();
+    const test = await TestModel.findOne({id: testId}).lean();
     if (!test) return res.status(404).json({ message: 'Test not found' });
 
     // Оценить ответы
@@ -77,7 +77,7 @@ export async function submitAttemptResult(req: Request, res: Response, next: Nex
     if (!registration) return res.status(404).json({ message: 'Registration not found' });
 
     // Находим тест по testId из регистрации
-    const test = await TestModel.findById(registration.testId).lean();
+    const test = await TestModel.findOne({id: registration.testId}).lean();
     if (!test) return res.status(404).json({ message: 'Test not found' });
 
     // Оцениваем ответы
@@ -134,7 +134,7 @@ export async function getAttemptTest(req: Request, res: Response, next: NextFunc
     if (!student) return res.status(404).json({ message: 'Student not found' });
     const registration = student.registrations.find(r => r.uniqueUrl === uniqueUrl);
     if (!registration) return res.status(404).json({ message: 'Registration not found' });
-    const test = await TestModel.findById(registration.testId);
+    const test = await TestModel.findOne({id: registration.testId});
     if (!test) return res.status(404).json({ message: 'Test not found' });
 
     // (Безопасно — можно не возвращать correctOptionId)

@@ -1,4 +1,3 @@
-/ * @type {import('tailwindcss').Config} */
 module.exports = {
     content: [
         './index.html',
@@ -7,15 +6,15 @@ module.exports = {
     safelist: [
         'bg-green-50',
         'bg-red-50',
+        'border-l-4',
         'border-green-400',
         'border-red-400',
+        'pl-4',
         'text-green-600',
         'text-red-600',
         'text-green-700',
         'font-bold',
         'font-semibold',
-        'pl-4',
-        'border-l-4',
     ],
     theme: {
         extend: {},

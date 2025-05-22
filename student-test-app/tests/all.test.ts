@@ -9,7 +9,7 @@ import {programmingTestData} from "../src/initialTests";
 
 
 beforeAll(async () => {
-    const url = 'mongodb://localhost:27017/student-test-app-test';
+    const url = process.env.MONGO_URL + '/student-test-app-test' || 'mongodb://localhost:27017/student-test-app-test';
     await mongoose.connect(url, { });
 });
 

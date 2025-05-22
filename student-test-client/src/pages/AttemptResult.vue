@@ -5,13 +5,27 @@
     <h1 class="text-2xl mb-4">Результаты теста</h1>
     <div class="mb-4">Ваш балл: <b>{{ result.score }}</b></div>
     <ul>
-      <li v-for="(ans, i) in result.answers" :key="i" class="mb-2">
-        <b>Вопрос {{ i+1 }}:</b>
-        <span v-if="ans.isCorrect" class="text-green-600">✔ верно</span>
-        <span v-else class="text-red-600">✗ неверно</span>
+      <li
+          v-for="(ans, i) in result.answers"
+          :key="i"
+          :class="['mb-4', ans.optionId === ans.correctOptionId ? 'bg-green-50 border-l-4 border-green-400 pl-4' : 'bg-red-50 border-l-4 border-red-400 pl-4']"
+      >
+        <b>Вопрос {{ i + 1 }}: {{ questions[i]?.text || 'Вопрос не найден' }}</b>
+        <div>
+          <span v-if="ans.optionId === ans.correctOptionId" class="text-green-600 font-bold">✔ верно</span>
+          <span v-else class="text-red-600 font-bold">✗ неверно</span>
+        </div>
+        <div :class="ans.optionId === ans.correctOptionId ? 'text-green-700 font-semibold' : 'text-red-600'">
+          Ваш ответ:
+          <span v-if="ans.optionId !== null && ans.optionId !== undefined">"{{ getOptionText(i, ans.optionId) }}"</span>
+          <span v-else>не отвечено</span>
+        </div>
+        <div :class="ans.optionId === ans.correctOptionId ? 'text-green-700 font-semibold' : 'text-red-600'">
+          Правильный ответ: "{{ getOptionText(i, ans.correctOptionId) }}"
+        </div>
       </li>
     </ul>
-    <router-link to="/" class="inline-block mt-6 text-blue-600 underline">На главную</router-link>
+    <router-link :to="`/attempt/${uniqueUrl}`" class="inline-block mt-6 ml-4 text-blue-600 underline">Вернуться к вопросам</router-link>
   </div>
 </template>
 
@@ -24,17 +38,28 @@ const uniqueUrl = route.params.uniqueUrl as string;
 const result = ref<any>(null);
 const loading = ref(true);
 const error = ref('');
+const questions = ref<any[]>([]);
+
+function getOptionText(questionIndex: number, optionId: string | null) {
+  if (!optionId) return '';
+  const opts = questions.value[questionIndex]?.options || [];
+  const opt = opts.find((o: any) => o._id.toString() === optionId);
+  return opt ? opt.text : '';
+}
 
 onMounted(async () => {
   try {
-    // Можно доработать backend: GET результат по uniqueUrl. Пока повторяем отправку ответов (можно кэшировать или реализовать GET /students/attempt/:uniqueUrl/result)
-    const res = await fetch(`${process.env.VUE_APP_API_URL}/students/attempt/${uniqueUrl}/result`);
+    const res = await fetch(`/api/students/attempt/${uniqueUrl}/result`);
     if (!res.ok) throw new Error('Результат не найден');
     result.value = await res.json();
+
+    console.log('LOADED RESULT', result.value);
+
+    // Используем встроенные данные вопросов из результата
+    questions.value = result.value.questions || [];
     loading.value = false;
   } catch (e: any) {
     error.value = e.message || 'Ошибка';
-    loading.value = false;
   }
 });
 </script>

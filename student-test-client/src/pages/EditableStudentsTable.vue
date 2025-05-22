@@ -1,10 +1,12 @@
 <template>
   <div>
-    <form @submit.prevent="addStudent" class="add-student-form">
-      <input v-model="newStudent.name" placeholder="Name" required />
-      <input v-model="newStudent.email" type="email" placeholder="Email" required />
-      <button type="submit">Add Student</button>
-    </form>
+    <section class="add-student-section">
+      <form @submit.prevent="addStudent" class="add-student-form">
+        <input v-model="newStudent.name" placeholder="Name" required />
+        <input v-model="newStudent.email" type="email" placeholder="Email" required />
+        <button type="submit" class="add-button">Add Student</button>
+      </form>
+    </section>
     <table>
       <thead>
       <tr>
@@ -19,10 +21,10 @@
       <tr v-if="!students.length"><td colspan="5">No students found.</td></tr>
       <tr v-for="student in students" :key="student._id" v-else>
         <td>
-          <input v-model="student.name" @change="saveStudent(student)" />
+          <input v-model="student.name" @blur="saveStudent(student)" />
         </td>
         <td>
-          <input v-model="student.email" @change="saveStudent(student)" />
+          <input v-model="student.email" @blur="saveStudent(student)" />
         </td>
         <td>
           <div>
@@ -31,8 +33,8 @@
               <option v-for="test in tests" :key="test._id" :value="test._id">{{ test.title }}</option>
             </select>
           </div>
-          <div v-if="testUrls[student._id]" style="margin-top: 0.25em; font-size: 0.9em; word-break: break-all;">
-            <a :href="testUrls[student._id]" target="_blank" style="color: #2d8cf0; text-decoration: underline;">
+          <div v-if="testUrls[student._id]" class="test-url">
+            <a :href="testUrls[student._id]" target="_blank" class="test-link">
               {{ testUrls[student._id] }}
             </a>
           </div>
@@ -42,22 +44,26 @@
               v-if="testUrls[student._id]"
               @click="copyToClipboard(testUrls[student._id])"
               title="Copy URL"
+              class="copy-button"
+              @mouseenter="showTooltip = student._id"
+              @mouseleave="showTooltip = null"
           >
             📋
+            <span v-if="showTooltip === student._id" class="tooltip">Copied!</span>
           </button>
         </td>
         <td>
-          <button @click="deleteStudent(student)" title="Delete Student">🗑</button>
+          <button @click="deleteStudent(student)" title="Delete Student" class="delete-button">🗑</button>
         </td>
       </tr>
       </tbody>
     </table>
-    <div v-if="students.length && !tests.length">No tests found.</div>
+    <div v-if="students.length && !tests.length" class="no-tests-message">No tests found.</div>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted } from 'vue';
+import { defineComponent, ref, onMounted, watch } from 'vue';
 import axios from 'axios';
 
 export default defineComponent({
@@ -71,6 +77,8 @@ export default defineComponent({
       name: '',
       email: '',
     });
+    const showTooltip = ref<string | null>(null);
+    let tooltipTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const seedTests = async () => {
       try {
@@ -91,8 +99,6 @@ export default defineComponent({
           axios.get('/api/students'),
           axios.get('/api/tests'),
         ]);
-        console.log('Students:', studentsRes.data);
-        console.log('Tests:', testsRes.data);
         students.value = studentsRes.data;
         tests.value = testsRes.data;
       } catch (e) {
@@ -102,7 +108,7 @@ export default defineComponent({
 
     const saveStudent = async (student: any) => {
       try {
-        await axios.patch(`/api/students/${student._id}`, {
+        await axios.put(`/api/students/${student._id}`, {
           name: student.name,
           email: student.email,
         });
@@ -113,13 +119,10 @@ export default defineComponent({
 
     const onTestSelect = async (student: any) => {
       const testId = selectedTests.value[student._id];
-      // Check that both testId and student._id exist and are non-empty
       if (!testId || !student._id) {
         testUrls.value[student._id] = '';
         return;
       }
-      // Debug log
-      console.log('Registering:', { studentId: student._id, testId });
       try {
         const res = await axios.post('/api/students/register', {
           studentId: student._id,
@@ -133,7 +136,13 @@ export default defineComponent({
     };
 
     const copyToClipboard = (text: string) => {
-      navigator.clipboard.writeText(text);
+      navigator.clipboard.writeText(text).then(() => {
+        if (tooltipTimeout) clearTimeout(tooltipTimeout);
+        showTooltip.value = Object.keys(testUrls.value).find(key => testUrls.value[key] === text) || null;
+        tooltipTimeout = setTimeout(() => {
+          showTooltip.value = null;
+        }, 500);
+      });
     };
 
     const addStudent = async () => {
@@ -172,12 +181,58 @@ export default defineComponent({
       copyToClipboard,
       addStudent,
       deleteStudent,
+      showTooltip,
     };
   },
 });
 </script>
 
 <style scoped>
+.add-student-section {
+  margin-bottom: 1.5em;
+  padding: 1em;
+  background-color: #f9f9f9;
+  border-radius: 6px;
+  box-shadow: 0 0 8px rgba(0,0,0,0.05);
+}
+
+.add-student-form {
+  display: flex;
+  gap: 0.75em;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.add-student-form input {
+  flex: 1 1 200px;
+  padding: 0.5em 0.75em;
+  font-size: 1rem;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  transition: border-color 0.2s ease;
+}
+
+.add-student-form input:focus {
+  outline: none;
+  border-color: #2d8cf0;
+  box-shadow: 0 0 5px rgba(45,140,240,0.5);
+}
+
+.add-button {
+  padding: 0.5em 1.2em;
+  background-color: #2d8cf0;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.add-button:hover {
+  background-color: #1a6ed8;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -190,48 +245,79 @@ th, td {
   text-align: left;
 }
 
-.add-student-form {
-  display: flex;
-  gap: 0.5em;
-  margin-bottom: 1em;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.add-student-form input,
-.add-student-form select {
-  padding: 0.4em;
-  font-size: 1em;
-  border: 1px solid #ccc;
+input[type="text"], input[type="email"], select {
+  width: 100%;
+  padding: 0.4em 0.6em;
+  font-size: 1rem;
+  border: 1px solid #bbb;
   border-radius: 4px;
+  transition: border-color 0.2s ease;
 }
 
-.add-student-form button {
-  padding: 0.5em 1em;
-  font-size: 1em;
-  background-color: #2d8cf0;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+input[type="text"]:focus, input[type="email"]:focus, select:focus {
+  outline: none;
+  border-color: #2d8cf0;
+  box-shadow: 0 0 5px rgba(45,140,240,0.5);
 }
 
-.add-student-form button:hover {
-  background-color: #1a6ed8;
+.test-url {
+  margin-top: 0.25em;
+  font-size: 0.9em;
+  word-break: break-all;
 }
 
-button {
+.test-link {
+  color: #2d8cf0;
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.copy-button {
   cursor: pointer;
   background: none;
   border: none;
-  font-size: 1.2em;
+  font-size: 1.3em;
+  position: relative;
+  color: #4a90e2;
+  transition: color 0.2s ease;
 }
 
-button[title="Delete Student"] {
+.copy-button:hover {
+  color: #1a6ed8;
+}
+
+.tooltip {
+  position: absolute;
+  top: -1.5em;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2d8cf0;
+  color: white;
+  padding: 0.15em 0.5em;
+  border-radius: 4px;
+  font-size: 0.75em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0.9;
+  user-select: none;
+}
+
+.delete-button {
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-size: 1.3em;
   color: #d9534f;
+  transition: color 0.2s ease;
 }
 
-button[title="Delete Student"]:hover {
+.delete-button:hover {
   color: #c9302c;
+}
+
+.no-tests-message {
+  margin-top: 1em;
+  font-style: italic;
+  color: #666;
 }
 </style>

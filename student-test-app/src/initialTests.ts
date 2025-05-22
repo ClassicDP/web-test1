@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import {TestModel} from "./models/all";
 
 export const programmingTestData = {
     title: 'Тест на знание JavaScript/TypeScript',
@@ -34,3 +35,20 @@ export const programmingTestData = {
     })
 };
 
+
+
+export async function initProgrammingTest() {
+    const existing = await TestModel.findOne({ title: programmingTestData.title });
+    if (!existing) {
+        await TestModel.create(programmingTestData);
+        console.log('Programming test created');
+    } else if (!existing.questions || existing.questions.length === 0) {
+        existing.questions = programmingTestData.questions.map(q => ({ ...q })) as any;
+        await existing.save();
+        console.log('Programming test questions updated');
+    } else {
+        console.log('Programming test already exists');
+    }
+}
+
+// Для инициализации теста вызови initProgrammingTest() после подключения к БД на сервере.

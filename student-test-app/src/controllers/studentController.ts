@@ -2,11 +2,13 @@ import { Request, Response, NextFunction } from 'express';
 import {IRegistration, StudentModel, TestModel} from "../models/all";
 import { v4 as uuidv4 } from 'uuid';
 
-function evaluateTestAnswers(test: any, answers: { questionId: string, optionId: string }[]) {
+function evaluateTestAnswers(test: any, answers: { questionId: string, optionId: string | null }[]) {
   let score = 0;
-  const checkedAnswers = answers.map((ans: { questionId: string, optionId: string }) => {
+  const checkedAnswers = answers.map((ans: { questionId: string, optionId: string | null }) => {
     const q = test.questions.find((q: any) => q._id.toString() === ans.questionId);
-    const isCorrect = q && q.correctOptionId && q.correctOptionId.toString() === ans.optionId;
+
+    // Если ответ не выбран (optionId == null), сразу не верно
+    const isCorrect = q && q.correctOptionId && ans.optionId && q.correctOptionId.toString() === ans.optionId;
     if (isCorrect) score++;
     return { ...ans, isCorrect, correctOptionId: q?.correctOptionId?.toString() || null };
   });
@@ -67,7 +69,9 @@ export async function submitTestResult(req: Request, res: Response, next: NextFu
 export async function submitAttemptResult(req: Request, res: Response, next: NextFunction) {
   try {
     const { uniqueUrl } = req.params;
-    const { answers } = req.body; // [{ questionId, optionId }, ...]
+    let { answers } = req.body; // [{ questionId, optionId }, ...]
+
+    console.log('[submitAttemptResult] START', uniqueUrl, answers);
 
     // Находим студента и регистрацию по uniqueUrl
     const student = await StudentModel.findOne({ 'registrations.uniqueUrl': uniqueUrl });
@@ -80,8 +84,28 @@ export async function submitAttemptResult(req: Request, res: Response, next: Nex
     const test = await TestModel.findById(registration.testId).lean();
     if (!test) return res.status(404).json({ message: 'Test not found' });
 
-    // Оцениваем ответы
-    const { score, checkedAnswers } = evaluateTestAnswers(test, answers);
+    if (!answers) answers = [];
+
+    let score = 0;
+    let checkedAnswers = [];
+
+    if (answers.length === 0) {
+      checkedAnswers = test.questions.map((q: any) => ({
+        questionId: q._id.toString(),
+        optionId: null,
+        isCorrect: false,
+        correctOptionId: q.correctOptionId ? q.correctOptionId.toString() : null,
+      }));
+    } else {
+      // Нормализуем ответы: заменяем optionId === '' или undefined на null
+      const normalizedAnswers = answers.map((ans: { questionId: string, optionId: string | null | undefined }) => ({
+        questionId: ans.questionId,
+        optionId: (ans.optionId === '' || typeof ans.optionId === 'undefined') ? null : ans.optionId,
+      }));
+      const result = evaluateTestAnswers(test, normalizedAnswers);
+      score = result.score;
+      checkedAnswers = result.checkedAnswers;
+    }
 
     registration.status = 'completed';
     registration.result = { score, answers: checkedAnswers };
@@ -90,6 +114,7 @@ export async function submitAttemptResult(req: Request, res: Response, next: Nex
 
     return res.json({ score, answers: checkedAnswers });
   } catch (err) {
+    console.error('[submitAttemptResult] ERROR', err);
     next(err);
   }
 }
@@ -136,11 +161,14 @@ export async function registerStudentToTest(req: Request, res: Response, next: N
 export async function getAttemptTest(req: Request, res: Response, next: NextFunction) {
   try {
     const { uniqueUrl } = req.params;
+    console.log('[getAttemptTest] START', uniqueUrl);
     const student = await StudentModel.findOne({ 'registrations.uniqueUrl': uniqueUrl });
+    const registration = student?.registrations.find(r => r.uniqueUrl === uniqueUrl);
+    console.log('[getAttemptTest] Student:', student?._id, 'Registration:', registration);
     if (!student) return res.status(404).json({ message: 'Student not found' });
-    const registration = student.registrations.find(r => r.uniqueUrl === uniqueUrl);
     if (!registration) return res.status(404).json({ message: 'Registration not found' });
     const test = await TestModel.findById(registration.testId);
+    console.log('[getAttemptTest] Test:', test?._id, test?.title);
     if (!test) return res.status(404).json({ message: 'Test not found' });
 
     // (Безопасно — можно не возвращать correctOptionId)
@@ -165,6 +193,62 @@ export async function getAttemptTest(req: Request, res: Response, next: NextFunc
       },
     });
   } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteStudent(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = req.params.id;
+    const deleted = await StudentModel.findByIdAndDelete(id);
+    if (!deleted) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+    res.json({ message: 'Student deleted successfully' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Возвращает результат попытки по uniqueUrl
+export async function getAttemptResult(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { uniqueUrl } = req.params;
+    console.log('[getAttemptResult] START', uniqueUrl);
+
+    // Найти студента по uniqueUrl
+    const student = await StudentModel.findOne({ 'registrations.uniqueUrl': uniqueUrl });
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    // Найти регистрацию
+    const registration = student.registrations.find((r: any) => r.uniqueUrl === uniqueUrl);
+    if (!registration) return res.status(404).json({ message: 'Registration not found' });
+
+    if (!registration.result) {
+      return res.status(404).json({ message: 'Result not found' });
+    }
+
+    // Берём данные теста для отображения вопросов и вариантов
+    const testDoc = await TestModel.findById(registration.testId).lean();
+    const questions = testDoc
+      ? testDoc.questions.map((q: any) => ({
+          _id: q._id,
+          text: q.text,
+          options: q.options.map((o: any) => ({ _id: o._id, text: o.text }))
+        }))
+      : [];
+    // Подготавливаем результат с дополнительными данными
+    const rawResult = typeof (registration.result as any).toObject === 'function'
+      ? (registration.result as any).toObject()
+      : registration.result;
+    const resultWithDetails = {
+      ...rawResult,
+      testId: registration.testId,
+      questions
+    };
+    return res.json(resultWithDetails);
+  } catch (err) {
+    console.error('[getAttemptResult] ERROR', err);
     next(err);
   }
 }

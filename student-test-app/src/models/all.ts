@@ -2,7 +2,7 @@ import mongoose, {Document, ObjectId, Schema} from "mongoose";
 
 export interface IAnswer {
     questionId: ObjectId | string;
-    optionId: ObjectId | string;
+    optionId: ObjectId | string | null;
     correctOptionId?: ObjectId | string;
     isCorrect?: boolean;
 }
@@ -29,7 +29,7 @@ export interface IStudent extends Document {
 
 export const AnswerSchema = new Schema<IAnswer>({
     questionId: {type: Schema.Types.ObjectId, required: true},
-    optionId: {type: Schema.Types.ObjectId, required: true},
+    optionId: {type: Schema.Types.ObjectId, required: false},
     correctOptionId: {type: Schema.Types.ObjectId, required: false},
 });
 export const TestResultSchema = new Schema<ITestResult>({

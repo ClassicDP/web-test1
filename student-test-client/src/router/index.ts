@@ -1,13 +1,17 @@
-// src/router.ts
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
+import { createRouter, createWebHistory } from 'vue-router';
+import TestManagementPage from '../pages/TestManagementPage.vue';
 import AttemptTest from '../pages/AttemptTest.vue';
 import AttemptResult from '../pages/AttemptResult.vue';
-import EditableStudentsTable from '../pages/EditableStudentsTable.vue';
+import TestList from '../pages/TestList.vue';
+import TestEditor from '../pages/TestEditor.vue';
 
-const routes: RouteRecordRaw[] = [
-    { path: '/attempt/:uniqueUrl', name: 'AttemptTest', component: AttemptTest, props: true },
-    { path: '/result/:uniqueUrl', name: 'AttemptResult', component: AttemptResult, props: true },
-    { path: '/', name: 'EditableStudentsTable', component: EditableStudentsTable },
+const routes = [
+    { path: '/', component: TestManagementPage },
+    { path: '/attempt/:uniqueUrl', component: AttemptTest },
+    { path: '/result/:uniqueUrl', component: AttemptResult },
+    { path: '/tests', component: TestList },
+    { path: '/tests/new', component: TestEditor },
+    { path: '/tests/:id/edit', component: TestEditor },
 ];
 
 export default createRouter({

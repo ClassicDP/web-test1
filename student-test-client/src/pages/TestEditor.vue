@@ -5,7 +5,10 @@
     <textarea v-model="test.description" placeholder="Описание" class="w-full border p-2 mb-4"></textarea>
 
     <div v-for="(q, qIndex) in test.questions" :key="q._id || qIndex" class="border p-4 mb-4 rounded">
-      <input v-model="q.text" placeholder="Текст вопроса" class="w-full border p-2 mb-2" />
+      <div class="flex justify-between items-start mb-2">
+        <input v-model="q.text" placeholder="Текст вопроса" class="w-full border p-2 mr-2" />
+        <button @click="removeQuestion(qIndex)" class="text-red-500 text-sm ml-2">Удалить вопрос</button>
+      </div>
 
       <div v-for="(o, oIndex) in q.options" :key="o._id || oIndex" class="flex items-center gap-2 mb-1">
         <input v-model="o.text" class="flex-1 border p-1" placeholder="Вариант ответа" />
@@ -44,6 +47,10 @@ onMounted(async () => {
 
 const addQuestion = () => {
   test.value.questions.push({ text: '', options: [], correctOptionId: null });
+};
+
+const removeQuestion = (qIndex) => {
+  test.value.questions.splice(qIndex, 1);
 };
 
 const addOption = (qIndex) => {

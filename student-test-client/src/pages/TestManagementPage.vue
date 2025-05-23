@@ -2,25 +2,25 @@
   <div class="p-6 space-y-8">
     <section class="add-student-section">
       <form @submit.prevent="addStudent" class="add-student-form flex gap-2 mb-4">
-        <input v-model="newStudent.name" placeholder="Name" required class="border p-2" />
+        <input v-model="newStudent.name" placeholder="Имя" required class="border p-2" />
         <input v-model="newStudent.email" type="email" placeholder="Email" required class="border p-2" />
-        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">Add Student</button>
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">Добавить студента</button>
       </form>
     </section>
 
     <table class="w-full border">
       <thead class="bg-gray-100">
       <tr>
-        <th class="p-2">Name</th>
+        <th class="p-2">Имя</th>
         <th class="p-2">Email</th>
-        <th class="p-2">Test</th>
+        <th class="p-2">Тест</th>
         <th></th>
         <th></th>
       </tr>
       </thead>
       <tbody>
       <tr v-if="!students.length">
-        <td colspan="5" class="text-center p-4">No students found.</td>
+        <td colspan="5" class="text-center p-4">Нет студентов.</td>
       </tr>
       <tr v-for="student in students" :key="student._id">
         <td><input v-model="student.name" @blur="saveStudent(student)" class="border p-1 w-full" /></td>

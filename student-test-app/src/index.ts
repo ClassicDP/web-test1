@@ -25,7 +25,12 @@ app.get('/', (req, res) => {
 
 // Не подключаемся к базе, если идёт тестирование
 if (process.env.NODE_ENV !== 'test') {
-    const mongoUrl = process.env.MONGO_URL + '/student-test-app' || 'mongodb://localhost:27017/student-test-app';
+    // Use env MONGO_URL if set and correct, otherwise fallback to local MongoDB
+    const mongoUrl = process.env.MONGO_URL
+      ? (process.env.MONGO_URL.startsWith('mongodb://') || process.env.MONGO_URL.startsWith('mongodb+srv://')
+          ? process.env.MONGO_URL
+          : `mongodb://localhost:27017/student-test-app`)
+      : 'mongodb://localhost:27017/student-test-app';
     mongoose.connect(mongoUrl)
         .then(async () => {
             console.log('MongoDB connected');
